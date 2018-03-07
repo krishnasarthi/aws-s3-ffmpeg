@@ -12,21 +12,20 @@ let spawn = require("child_process").spawn;
 aws.config.loadFromPath("./config.json");
 const s3 = new aws.S3({ apiVersion: "2006-03-01" });
 
-const SOURCE_BUCKET = "mm4-recorded-videos";
-const DESTINATION_BUCKET = "mm4-recorded-videos";
+const SOURCE_BUCKET = "mm4rec";
+const DESTINATION_BUCKET = "mm4rec";
 const mimeType = "video/mp4";
 const SOURCE_EXTENSION = "flv";
 const DESTINATION_EXTENSION = "mp4";
 
 log(ffmpegBinary.path);
 
-const key = "room-1/6706160380819268-1520057614.flv";
+const key = "3025833506943909-1519597690.flv";
 
 const params = {
   Bucket: SOURCE_BUCKET,
   Key: key
 };
-
 
 const parsedKey = parseKey(key);
 const keyPrefix = parsedKey.prefix;
@@ -36,8 +35,6 @@ const download = path.join(__dirname, `${filename}.${SOURCE_EXTENSION}`);
 const outputDir = path.join(__dirname, `${filename}.${DESTINATION_EXTENSION}`);
 
 main();
-
-//readS3(params);
 
 function downLoadFile(params) {
   return new Promise((resolve, reject) => {
@@ -79,7 +76,7 @@ function parseKey(key) {
   let prefixArray = keyArray;
 
   return {
-    prefix: keyArray.slice(0, arrayLength - 1).join('\\'),
+    prefix: keyArray.slice(0, arrayLength - 1).join("\\"),
     filename: path.parse(keyArray[arrayLength - 1]).name
   };
 }
@@ -98,6 +95,21 @@ function ffmpeg(filename) {
         resolve(e);
       });
   });
+}
+
+async function uploadFile(filename) {
+  log('Start uploading');
+  const fileFullPath = path.join(__dirname, `${filename}.mp4`);
+  const fileStream = fs.createReadStream(fileFullPath);
+  await uploadToBucket(
+    DESTINATION_BUCKET,
+    `${filename}.${DESTINATION_EXTENSION}`,
+    fileStream,
+    null,
+    mimeType
+  );
+
+  log('upload completed');
 }
 
 function uploadToBucket(Bucket, Key, Body, contentEncoding, ContentType) {
@@ -128,6 +140,7 @@ function uploadToBucket(Bucket, Key, Body, contentEncoding, ContentType) {
 async function main() {
   await downLoadFile(params);
   await ffmpeg(filename);
+  await uploadFile(filename);
 }
 
 function log(message) {
